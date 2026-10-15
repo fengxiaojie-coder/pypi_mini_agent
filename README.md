@@ -15,6 +15,8 @@
 
 1. **执行 cmd 命令** —— `run_command`
 2. **读取文件** —— `read_file`
+3. **写入文件** —— `write_file`
+4. **查询天气** —— `get_weather`
 
 ## 下一步
 

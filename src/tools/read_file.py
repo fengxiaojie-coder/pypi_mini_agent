@@ -1,3 +1,6 @@
+#read_file.py
+import os
+
 TOOL_SCHEMA = {
     "type": "function",
     "name": "read_file",
@@ -22,8 +25,6 @@ TOOL_SCHEMA = {
         "required": ["path"],
     },
 }
-
-import os
 
 def read_file(path: str, max_chars: int = 10000, encoding: str = "auto") -> str:
     """
