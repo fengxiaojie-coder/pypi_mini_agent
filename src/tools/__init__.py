@@ -1,3 +1,4 @@
+#__init__.py
 """自动发现 tools 目录下所有工具，汇总成 schema 列表和函数注册表"""
 
 import importlib

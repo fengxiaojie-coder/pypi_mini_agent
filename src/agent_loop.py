@@ -1,7 +1,9 @@
+#agent_loop.py
 import os
+import json
 from openai import OpenAI
 from src.tools import TOOL_SCHEMAS, TOOL_REGISTRY
-import json
+from src.memory import MemoryManager
 
 PROMPT_SETTING = """
 宁城北来应渐雪，你是宁北雪,我的agent编程助手。
@@ -10,14 +12,17 @@ PROMPT_SETTING = """
 调用工具时，参数必须是合法的 JSON 对象，不要输出 XML 标签。
 """
 
-from openai import OpenAI
 def agent_loop():
     client = OpenAI(
-        api_key="sk-7b7efed3bb714e8aafea933de810c9bd",
+        api_key=os.environ["DEEPSEEK_API_KEY"],
         base_url="https://api.deepseek.com",
     )
+    memory_manager = MemoryManager()
 
-    history = []
+    history = memory_manager.load_as_context(limit=20) # 回复会话
+
+    if history:
+        print(f"[已恢复 {len(history)} 条历史]")
 
     while True:
         user_input = input("你:")
@@ -25,10 +30,12 @@ def agent_loop():
             break
 
         history.append({"role":"user", "content":user_input})
-        answer = None
+        memory_manager.save_user_message(user_input)
 
+        answer = None
         response = client.responses.create(
-            model="deepseek-v4-pro",
+            model="deepseek-flash",
+            # model="deepseek-v4-pro", #怎么半天就没钱了，😭
             max_output_tokens=1000,
             instructions=PROMPT_SETTING,
             tools=TOOL_SCHEMAS,
@@ -50,7 +57,10 @@ def agent_loop():
 
             if not function_calls:
                 answer = response
-                history.append({"role":"assistant", "content":response.output_text})
+                text = response.output_text or ""
+                if text:
+                    history.append({"role": "assistant", "content": text})
+                    memory_manager.save_assistant_message(text)                                 # ← 新增
                 break
 
             tool_outputs = []
@@ -70,6 +80,8 @@ def agent_loop():
                     "call_id": call.call_id,
                     "output": result,
                 })
+                memory_manager.save_tool_call(call.name, call.arguments, call.call_id)
+                memory_manager.save_tool_output(call.name, result, call.call_id)
 
             #history 记录工具调用
             for item in response.output:

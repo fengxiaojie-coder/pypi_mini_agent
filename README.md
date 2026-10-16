@@ -10,6 +10,7 @@
 - 工具调用循环
 - 本地 history 维护
 - 推理过程收集与打印
+- history.jsonl 原始对话流水
 
 ### 工具
 
@@ -26,7 +27,6 @@
 
 | 文件 | 作用 |
 |---|---|
-| `memory/history.jsonl` | 原始对话流水 |
 | `memory/YYYY-MM-DD.md` | 情景记忆 |
 | `memory/MEMORY.md` | 长期核心记忆，每轮注入 prompt |
 | `templates/USER.md` | 用户画像和稳定偏好 |
