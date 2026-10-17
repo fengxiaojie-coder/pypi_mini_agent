@@ -2,6 +2,28 @@
 
 仿照 B站UP主 小单说AI [TheSyart/claude-agent-examples](https://github.com/TheSyart/claude-agent-examples) 用 Python 手写一个 mini agent。
 
+## 环境准备
+
+```bash
+conda create -n pypi python=3.12
+conda activate pypi
+pip install -r requirements.txt
+```
+
+`.env` 文件（放在项目根目录，不要提交到 git）：
+
+```
+DEEPSEEK_API_KEY=sk-你的DeepSeekKey
+BOCHA_API_KEY=sk-你的博查Key
+```
+
+## 项目运行
+
+```bash
+conda activate pypi
+python agent_main.py
+```
+
 ## 已完成功能
 
 ### 基本 agent 功能
@@ -11,25 +33,38 @@
 - 本地 history 维护
 - 推理过程收集与打印
 - history.jsonl 原始对话流水
+- 跨会话恢复历史（`load_as_context`）
+- history 压缩（`/compact` 手动、`exit` 自动）
 
 ### 工具
 
 1. **执行 cmd 命令** —— `run_command`
 2. **读取文件** —— `read_file`
 3. **写入文件** —— `write_file`
-4. **查询天气** —— `get_weather`
+4. **精确编辑文件** —— `edit_file`（`old_string` → `new_string`）
+5. **查询天气** —— `get_weather`
+6. **抓取网页** —— `fetch_webpage`
+7. **获取当前时间** —— `get_current_time`
+8. **网页搜索** —— `web_search`（博查 Web Search API）
 
-## 下一步
-
-### 记忆系统管理
-
-对应参考项目 `step07_memory_system.py`。
+### 记忆系统
 
 | 文件 | 作用 |
 |---|---|
-| `memory/YYYY-MM-DD.md` | 情景记忆 |
-| `memory/MEMORY.md` | 长期核心记忆，每轮注入 prompt |
-| `templates/USER.md` | 用户画像和稳定偏好 |
-| `templates/agent/compact_prompt.md` | 压缩旧对话的提示词模板 |
+| `memory/history.jsonl` | 原始对话流水 |
+| `memory/MEMORY.md` | 长期核心记忆 |
+| `memory/USER.md` | 用户画像和稳定偏好 |
 
-代码只在文件缺失时创建默认内容，不覆盖已有记忆。
+## 下一步
+
+### 记忆注入
+
+- 将 `MEMORY.md` / `USER.md` 拼进 `instructions`，每轮注入 prompt
+- `save_memory` 工具，让 agent 自己写长期记忆
+- 定期人工整理，去重、删过时内容
+
+### 其他待补
+
+- `list_dir` / `glob`：结构化列目录
+- `grep`：项目内全文搜索
+- `run_python`：直接跑脚本/单测

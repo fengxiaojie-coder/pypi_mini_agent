@@ -4,9 +4,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-
-# 获取memory目录
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 MEMORY_DIR = PROJECT_ROOT / "memory"
 HISTORY_FILE = MEMORY_DIR / "history.jsonl"
 
@@ -90,6 +88,9 @@ class MemoryManager:
     def _to_api_format(self, records):
         """把 memory 记录转成 API input 格式"""
         api_input = []
+
+        # tool_call和tool_result需要配对，确保顺序正确
+        pending_calls = set()
         for r in records:
             role = r.get("role")
 
@@ -100,6 +101,10 @@ class MemoryManager:
                 })
 
             elif role == "tool_call":
+                call_id = r.get("call_id")
+                if not call_id:
+                    continue
+                pending_calls.add(r.get("call_id"))
                 api_input.append({
                     "type": "function_call",
                     "name": r.get("tool_name"),
@@ -108,10 +113,29 @@ class MemoryManager:
                 })
 
             elif role == "tool_result":
+                # 确保有对应的 tool_call
+                call_id = r.get("call_id")
+                if not call_id:
+                    continue
+                if call_id not in pending_calls:      # ← 孤立 output，跳过
+                    continue
+                pending_calls.discard(call_id)
                 api_input.append({
                     "type": "function_call_output",
                     "call_id": r.get("call_id"),
                     "output": r.get("content", ""),
                 })
+        final = []
+        for item in api_input:
+            if item.get("type") == "function_call_output":
+                # 如果前一个不是 tool_call，则跳过
+                if not final or final[-1].get("type") != "function_call":
+                    continue
+            final.append(item)
 
-        return api_input
+        return final
+
+    def clear_history(self):
+        """清空历史记录文件"""
+        if self.history_file.exists():
+            self.history_file.unlink()
