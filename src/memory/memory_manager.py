@@ -7,11 +7,41 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 MEMORY_DIR = PROJECT_ROOT / "memory"
 HISTORY_FILE = MEMORY_DIR / "history.jsonl"
+MEMORY_MD = MEMORY_DIR / "MEMORY.md"
+USER_MD = MEMORY_DIR / "USER.md"
+
+DEFAULT_MEMORY = """# 长期记忆
+
+## 项目
+
+## 技术决策
+
+## 踩过的坑
+
+## 待办
+"""
+
+DEFAULT_USER = """# 用户画像
+
+## 基本信息
+
+## 偏好
+
+## 技术栈
+"""
 
 class MemoryManager:
     def __init__(self, history_file: Path = HISTORY_FILE):
         self.history_file = history_file
         self.history_file.parent.mkdir(parents=True, exist_ok=True)
+        self.memory_md = MEMORY_MD
+        self.user_md = USER_MD
+        self._ensure_file(self.memory_md, DEFAULT_MEMORY)
+        self._ensure_file(self.user_md, DEFAULT_USER)
+
+    def _ensure_file(self, path: Path, default: str):
+        if not path.exists():
+            path.write_text(default, encoding="utf-8")
 
     def save_message(self, role: str,  content: str, extra: dict = None):
         """
@@ -49,6 +79,46 @@ class MemoryManager:
             "tool_name": tool_name,
             "call_id": call_id
         })
+
+    def load_memory_md(self) -> str:
+        return self.memory_md.read_text(encoding="utf-8") if self.memory_md.exists() else ""
+
+    def load_user_md(self) -> str:
+        return self.user_md.read_text(encoding="utf-8") if self.user_md.exists() else ""
+
+    def append_memory(self, text: str, section: str = None) -> str:
+        return self._append_to_md(self.memory_md, text, section)
+
+    def append_user_profile(self, text: str, section: str = None) -> str:
+        return self._append_to_md(self.user_md, text, section)
+
+    def _append_to_md(self, path: Path, text: str, section: str = None) -> str:
+        content = path.read_text(encoding="utf-8")
+
+        # 去重
+        if text.strip() in content:
+            return f"已存在：{text}"
+
+        line = f"- [{datetime.now().strftime('%Y-%m-%d')}] {text}\n"
+
+        if section:
+            marker = f"## {section}"
+            if marker in content:
+                idx = content.index(marker) + len(marker)
+                rest = content[idx:]
+                next_h2 = rest.find("\n## ")
+                if next_h2 == -1:
+                    new_content = content.rstrip() + "\n" + line
+                else:
+                    insert_at = idx + next_h2
+                    new_content = content[:insert_at] + "\n" + line + content[insert_at:]
+            else:
+                new_content = content.rstrip() + f"\n\n## {section}\n\n{line}"
+        else:
+            new_content = content.rstrip() + "\n" + line
+
+        path.write_text(new_content, encoding="utf-8")
+        return f"已保存：{text}"
 
     def load_history(self, limit: int = 20):
         """

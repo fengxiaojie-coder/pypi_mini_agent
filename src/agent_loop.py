@@ -65,7 +65,7 @@ def agent_loop():
             model="deepseek-flash",
             # model="deepseek-v4-pro", #怎么半天就没钱了，😭
             max_output_tokens=1000,
-            instructions=PROMPT_SETTING,
+            instructions = build_instructions(memory_manager),
             tools=TOOL_SCHEMAS,
             input=history
         )
@@ -153,8 +153,21 @@ def tool_use(client, memory_manager, history, response):
         response = client.responses.create(
                 model="deepseek-flash",
                 max_output_tokens=1000,
-                instructions=PROMPT_SETTING,
+                instructions = build_instructions(memory_manager),
                 tools=TOOL_SCHEMAS,
                 input=history,
             )
     return answer
+
+def build_instructions(memory_manager) -> str:
+    parts = [PROMPT_SETTING]
+
+    memory = memory_manager.load_memory_md().strip()
+    user = memory_manager.load_user_md().strip()
+
+    if memory:
+        parts.append(f"\n## 长期记忆\n{memory}")
+    if user:
+        parts.append(f"\n## 用户画像\n{user}")
+
+    return "\n".join(parts)

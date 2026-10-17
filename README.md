@@ -46,6 +46,7 @@ python agent_main.py
 6. **抓取网页** —— `fetch_webpage`
 7. **获取当前时间** —— `get_current_time`
 8. **网页搜索** —— `web_search`（博查 Web Search API）
+9. **保存记忆** —— `save_memory`（写入 `MEMORY.md` / `USER.md`）
 
 ### 记忆系统
 
@@ -55,16 +56,10 @@ python agent_main.py
 | `memory/MEMORY.md` | 长期核心记忆 |
 | `memory/USER.md` | 用户画像和稳定偏好 |
 
+- `MEMORY.md` / `USER.md` 每轮拼进 `instructions`，跨会话生效
+- `save_memory` 工具让 agent 自己写长期记忆（`type=user` / `type=memory`，按 section 插入、去重、带日期）
+- 手动编辑 md 也生效，最可靠
+
 ## 下一步
 
-### 记忆注入
-
-- 将 `MEMORY.md` / `USER.md` 拼进 `instructions`，每轮注入 prompt
-- `save_memory` 工具，让 agent 自己写长期记忆
-- 定期人工整理，去重、删过时内容
-
-### 其他待补
-
-- `list_dir` / `glob`：结构化列目录
-- `grep`：项目内全文搜索
-- `run_python`：直接跑脚本/单测
+agent的任务规划
