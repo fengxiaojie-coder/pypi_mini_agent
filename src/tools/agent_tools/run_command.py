@@ -56,6 +56,11 @@ ALLOWED_COMMANDS = {
     "findstr",
     "more",
     "cls",
+    "python",
+    "python3",
+    "py",
+    "pytest",
+    "git",
 }
 
 def run_command(command:str) -> str:
