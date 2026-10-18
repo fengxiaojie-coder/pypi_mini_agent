@@ -40,13 +40,14 @@ python agent_main.py
 
 1. **执行 cmd 命令** —— `run_command`
 2. **读取文件** —— `read_file`
-3. **写入文件** —— `write_file`
-4. **精确编辑文件** —— `edit_file`（`old_string` → `new_string`）
+3. **写入文件** —— `write_file`（覆盖前自动备份 `.bak`，原子写）
+4. **精确编辑文件** —— `edit_file`（`old_string` → `new_string`，要求唯一匹配）
 5. **查询天气** —— `get_weather`
 6. **抓取网页** —— `fetch_webpage`
 7. **获取当前时间** —— `get_current_time`
 8. **网页搜索** —— `web_search`（博查 Web Search API）
 9. **保存记忆** —— `save_memory`（写入 `MEMORY.md` / `USER.md`）
+10. **任务规划** —— `update_todos`（todolist，逐步推进状态）
 
 ### 记忆系统
 
@@ -60,6 +61,14 @@ python agent_main.py
 - `save_memory` 工具让 agent 自己写长期记忆（`type=user` / `type=memory`，按 section 插入、去重、带日期）
 - 手动编辑 md 也生效，最可靠
 
+### 任务规划（todolist）
+
+- `update_todos` 工具：模型传完整列表（全量覆盖），状态 `pending` / `in_progress` / `completed`
+- 同一时间只允许一个 `in_progress`，多个会报错
+- 任务列表每轮注入 `instructions`，模型能看到当前进度
+- `PROMPT_SETTING` 里规定：3 步以上任务先建列表，逐步推进状态
+- 任务全部完成或达到 `MAX_CONTINUE` 上限时 `clear_todos()`，不跨对话污染
+
 ## 下一步
 
-agent的任务规划
+agent子代理

@@ -45,7 +45,7 @@ def read_file(path: str, max_chars: int = 10000, encoding: str = "auto") -> str:
 
     # 编码策略：UTF-8 → GBK → 带 replace 兜底
     encodings = (
-        ["utf-8", "gbk", "gb18030", "latin-1"]
+        ["utf-8", "gbk", "gb18030"]
         if encoding == "auto"
         else [encoding]
     )
