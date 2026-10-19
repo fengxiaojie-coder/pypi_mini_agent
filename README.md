@@ -48,6 +48,7 @@ python agent_main.py
 8. **网页搜索** —— `web_search`（博查 Web Search API）
 9. **保存记忆** —— `save_memory`（写入 `MEMORY.md` / `USER.md`）
 10. **任务规划** —— `update_todos`（todolist，逐步推进状态）
+11. **网页调研子代理** —— `webpage_subagent`（独立上下文，搜索+抓取+整理）
 
 ### 记忆系统
 
@@ -69,6 +70,21 @@ python agent_main.py
 - `PROMPT_SETTING` 里规定：3 步以上任务先建列表，逐步推进状态
 - 任务全部完成或达到 `MAX_CONTINUE` 上限时 `clear_todos()`，不跨对话污染
 
+### 子代理（webpage_subagent）
+
+- **独立上下文**：子代理有自己的 `history`，中间调了什么工具、抓了多少页面，主 agent 看不到，只收最终摘要
+- **工具权限最小化**：子代理只拿到 `web_search` 和 `fetch_webpage` 两个工具，不能 `run_command`、`write_file`、不能递归派子代理
+- **Prompt 写死**：子代理是“网页调研助手”，规则固定（最多抓 3 个页面、整理成 关键事实/来源链接/不确定的地方）
+- **轮数上限**：`MAX_ROUNDS = 5`，防止子代理无限循环
+- **失败兜底**：子代理超轮失败时，主 agent 可以自己补做（代价是中间过程进主 history）
+- **适用场景**：多网页调研、多来源对比、需要整理成结构化摘要。简单搜索直接用 `web_search`，不要走子代理
+
 ## 下一步
 
-agent子代理
+### 工具健壮性
+
+- `run_command` 白名单拆分校验（防 `&&` / `|` 绕过），非字母开头命令防崩溃
+
+### 子代理完善
+
+- 子代理失败时的重试/降级策略
