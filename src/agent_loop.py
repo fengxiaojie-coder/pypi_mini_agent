@@ -4,6 +4,9 @@ import json
 
 from openai import OpenAI
 
+from src.memory.memory_RAG import (
+    MemoryRAG, split_md_to_chunks, RAG_THRESHOLD,
+)
 from src.tools.agent_tools import TOOL_SCHEMAS, TOOL_REGISTRY
 from src.memory.memory_manager import MemoryManager
 from src.memory.history_compact import compact_jsonl
@@ -30,18 +33,54 @@ MODEL = "deepseek-flash"
 MAX_OUTPUT_TOKENS = 8000
 TODO_MAX_CONTINUE = 10
 
+# 单例,防止重复创建
+_rag = None
 
-def build_instructions(memory_manager) -> str:
-    """拼 system prompt：基础 + 长期记忆 + 用户画像 + 当前任务"""
+def _get_rag():
+    global _rag
+    if _rag is None:
+        _rag = MemoryRAG()
+    return _rag
+
+
+def build_instructions(memory_manager, query: str = "") -> str:
+    """拼 system prompt：基础 + 记忆（小量全量，大量 RAG）+ 用户画像 + 当前任务"""
     parts = [PROMPT_SETTING]
 
     memory = memory_manager.load_memory_md().strip()
     user = memory_manager.load_user_md().strip()
 
-    if memory:
-        parts.append(f"\n## 长期记忆\n{memory}")
-    if user:
-        parts.append(f"\n## 用户画像\n{user}")
+    total_chunks = len(
+        split_md_to_chunks(memory) + split_md_to_chunks(user)
+    )
+
+    if total_chunks <= RAG_THRESHOLD:
+        # 小量：全量注入
+        print(f"[RAG] 记忆 {total_chunks} 条，全量注入")
+        if memory:
+            parts.append(f"\n## 长期记忆\n{memory}")
+        if user:
+            parts.append(f"\n## 用户画像\n{user}")
+    else:
+        # 大量：RAG 检索
+        try:
+            rag = _get_rag()
+            rag.index(memory, user)
+            relevant = rag.retrieve(query, top_k=5)
+            if relevant:
+                parts.append(f"\n## 相关长期记忆\n{relevant}")
+                lines = [l.strip("- ").strip() for l in relevant.split("\n") if l.strip()]
+                print(f"[RAG] 记忆 {total_chunks} 条，检索到 {len(lines)} 条：")
+                for l in lines:
+                    print(f"  - {l}")
+            else:
+                print(f"[RAG] 记忆 {total_chunks} 条，检索无结果")
+        except Exception as e:
+            print(f"[RAG] 失败，退回全量注入：{e}")
+            if memory:
+                parts.append(f"\n## 长期记忆\n{memory}")
+            if user:
+                parts.append(f"\n## 用户画像\n{user}")
 
     todos = get_todos()
     if todos:
@@ -88,6 +127,7 @@ class AgentSession:
 
     def run(self, user_input: str):
         """跑一轮对话（同步）"""
+        self.last_query = user_input
         if not user_input.strip():
             return
 
@@ -108,7 +148,7 @@ class AgentSession:
         response = self.client.responses.create(
             model=MODEL,
             max_output_tokens=MAX_OUTPUT_TOKENS,
-            instructions=build_instructions(self.memory_manager),
+            instructions=build_instructions(self.memory_manager, user_input),
             tools=TOOL_SCHEMAS,
             input=self.history,
         )
@@ -172,7 +212,7 @@ class AgentSession:
                     response = self.client.responses.create(
                         model=MODEL,
                         max_output_tokens=MAX_OUTPUT_TOKENS,
-                        instructions=build_instructions(self.memory_manager),
+                        instructions=build_instructions(self.memory_manager, self.last_query),
                         tools=TOOL_SCHEMAS,
                         input=self.history,
                     )
@@ -245,7 +285,7 @@ class AgentSession:
             response = self.client.responses.create(
                 model=MODEL,
                 max_output_tokens=MAX_OUTPUT_TOKENS,
-                instructions=build_instructions(self.memory_manager),
+                instructions=build_instructions(self.memory_manager, self.last_query),
                 tools=TOOL_SCHEMAS,
                 input=self.history,
             )
